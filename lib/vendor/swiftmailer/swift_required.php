@@ -12,6 +12,8 @@
  * Autoloader and dependency injection initialization for Swift Mailer.
  */
 
+namespace Legacy;
+
 //Load Swift utility class
 require_once dirname(__FILE__) . '/classes/Swift.php';
 

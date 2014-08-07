@@ -15,6 +15,8 @@
  * 
  * @author Chris Corbyn
  */
+namespace Legacy;
+
 abstract class Swift
 {
   
@@ -51,7 +53,7 @@ abstract class Swift
    */
   public static function registerAutoload()
   {
-    spl_autoload_register(array('Swift', 'autoload'));
+    spl_autoload_register(array('Legacy\Swift', 'autoload'));
   }
   
 }
