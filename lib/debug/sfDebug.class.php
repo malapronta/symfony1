@@ -76,9 +76,7 @@ class sfDebug
       $values[$name] = array();
       foreach ($GLOBALS['_'.strtoupper($name)] as $key => $value)
       {
-        if (strpos($key, 'CC_KEY') === false) {
-          $values[$name][$key] = $value;
-        }
+        $values[$name][$key] = $value;
       }
       ksort($values[$name]);
     }
