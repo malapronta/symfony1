@@ -18,262 +18,255 @@
  */
 class sfDebug
 {
+  /**
+   * Returns symfony information as an array.
+   *
+   * @return array An array of symfony information
+   */
+  public static function symfonyInfoAsArray()
+  {
+    return array(
+      'version' => SYMFONY_VERSION,
+      'path'    => sfConfig::get('sf_symfony_lib_dir'),
+    );
+  }
 
-    /**
-     * Returns symfony information as an array.
-     *
-     * @return array An array of symfony information
-     */
-    public static function symfonyInfoAsArray()
+  /**
+   * Returns PHP information as an array.
+   *
+   * @return array An array of php information
+   */
+  public static function phpInfoAsArray()
+  {
+    $values = array(
+      'php'        => phpversion(),
+      'os'         => php_uname(),
+      'extensions' => get_loaded_extensions(),
+    );
+
+    natcasesort($values['extensions']); 
+
+    // assign extension version
+    if ($values['extensions'])
     {
-        return array(
-            'version' => SYMFONY_VERSION,
-            'path' => sfConfig::get('sf_symfony_lib_dir'),
-        );
+      foreach($values['extensions'] as $key => $extension)
+      {
+        $values['extensions'][$key] = phpversion($extension) ? sprintf('%s (%s)', $extension, phpversion($extension)) : $extension;
+      }
     }
 
-    /**
-     * Returns PHP information as an array.
-     *
-     * @return array An array of php information
-     */
-    public static function phpInfoAsArray()
+    return $values;
+  }
+
+  /**
+   * Returns PHP globals variables as a sorted array.
+   *
+   * @return array PHP globals
+   */
+  public static function globalsAsArray()
+  {
+    $values = array();
+    foreach (array('cookie', 'server', 'get', 'post', 'files', 'env', 'session') as $name)
     {
-        $values = array(
-            'php' => phpversion(),
-            'os' => php_uname(),
-            'extensions' => get_loaded_extensions(),
-        );
+      if (!isset($GLOBALS['_'.strtoupper($name)]))
+      {
+        continue;
+      }
 
-        natcasesort($values['extensions']);
-
-        // assign extension version
-        if ($values['extensions']) {
-            foreach ($values['extensions'] as $key => $extension){
-                $values['extensions'][$key] = phpversion($extension) ? sprintf('%s (%s)', $extension, phpversion($extension)) : $extension;
-            }
-        }
-
-        return $values;
+      $values[$name] = array();
+      foreach ($GLOBALS['_'.strtoupper($name)] as $key => $value)
+      {
+        $values[$name][$key] = $value;
+      }
+      ksort($values[$name]);
     }
 
-    /**
-     * Returns PHP globals variables as a sorted array.
-     *
-     * @return array PHP globals
-     */
-    public static function globalsAsArray()
+    ksort($values);
+
+    return $values;
+  }
+
+  /**
+   * Returns sfConfig variables as a sorted array.
+   *
+   * @return array sfConfig variables
+   */
+  public static function settingsAsArray()
+  {
+    $config = sfConfig::getAll();
+
+    ksort($config);
+
+    return $config;
+  }
+
+  /**
+   * Returns request parameter holders as an array.
+   *
+   * @param sfRequest $request A sfRequest instance
+   *
+   * @return array The request parameter holders
+   */
+  public static function requestAsArray(sfRequest $request = null)
+  {
+    if (!$request)
     {
-        $values = array();
-        foreach (array('cookie', 'server', 'get', 'post', 'files', 'env', 'session') as $name){
-            if (!isset($GLOBALS['_'.strtoupper($name)])) {
-                continue;
-            }
-
-            $values[$name] = array();
-            foreach ($GLOBALS['_'.strtoupper($name)] as $key => $value){
-                if ($key != 'CC_KEY') {
-                    $values[$name][$key] = $value;
-                }
-            }
-            ksort($values[$name]);
-        }
-
-        ksort($values);
-
-        return $values;
+      return array();
     }
 
-    /**
-     * Returns sfConfig variables as a sorted array.
-     *
-     * @return array sfConfig variables
-     */
-    public static function settingsAsArray()
+    return array(
+      'options'         => $request->getOptions(),
+      'parameterHolder' => self::flattenParameterHolder($request->getParameterHolder(), true),
+      'attributeHolder' => self::flattenParameterHolder($request->getAttributeHolder(), true),
+    );
+  }
+
+  /**
+   * Returns response parameters as an array.
+   *
+   * @param sfResponse $response A sfResponse instance
+   *
+   * @return array The response parameters
+   */
+  public static function responseAsArray(sfResponse $response = null)
+  {
+    if (!$response)
     {
-        $config = sfConfig::getAll();
-
-        ksort($config);
-
-        foreach ($config as $key => $conf) {
-            if (strpos($key, 'app_') !== false) {
-                unset($config[$key]);
-            }
-        }
-
-        return $config;
-        //return array();
+      return array();
     }
 
-    /**
-     * Returns request parameter holders as an array.
-     *
-     * @param sfRequest $request A sfRequest instance
-     *
-     * @return array The request parameter holders
-     */
-    public static function requestAsArray(sfRequest $request = null)
-    {
-        if (!$request) {
-            return array();
-        }
+    return array(
+      'status'      => array('code' => $response->getStatusCode(), 'text' => $response->getStatusText()),
+      'options'     => $response->getOptions(),
+      'cookies'     => method_exists($response, 'getCookies')     ? $response->getCookies() : array(),
+      'httpHeaders' => method_exists($response, 'getHttpHeaders') ? $response->getHttpHeaders() : array(),
+      'javascripts' => method_exists($response, 'getJavascripts') ? $response->getJavascripts('ALL') : array(),
+      'stylesheets' => method_exists($response, 'getStylesheets') ? $response->getStylesheets('ALL') : array(),
+      'metas'       => method_exists($response, 'getMetas')       ? $response->getMetas() : array(),
+      'httpMetas'   => method_exists($response, 'getHttpMetas')   ? $response->getHttpMetas() : array(),
+    );
+  }
 
-        return array(
-            'options' => $request->getOptions(),
-            'parameterHolder' => self::flattenParameterHolder($request->getParameterHolder(), true),
-            'attributeHolder' => self::flattenParameterHolder($request->getAttributeHolder(), true),
-        );
+  /**
+   * Returns user parameters as an array.
+   *
+   * @param sfUser $user A sfUser instance
+   *
+   * @return array The user parameters
+   */
+  public static function userAsArray(sfUser $user = null)
+  {
+    if (!$user)
+    {
+      return array();
     }
 
-    /**
-     * Returns response parameters as an array.
-     *
-     * @param sfResponse $response A sfResponse instance
-     *
-     * @return array The response parameters
-     */
-    public static function responseAsArray(sfResponse $response = null)
-    {
-        if (!$response) {
-            return array();
-        }
+    $data = array(
+      'options'         => $user->getOptions(),
+      'attributeHolder' => self::flattenParameterHolder($user->getAttributeHolder(), true),
+      'culture'         => $user->getCulture(),
+    );
 
-        return array(
-            'status' => array('code' => $response->getStatusCode(), 'text' => $response->getStatusText()),
-            'options' => $response->getOptions(),
-            'cookies' => method_exists($response, 'getCookies') ? $response->getCookies() : array(),
-            'httpHeaders' => method_exists($response, 'getHttpHeaders') ? $response->getHttpHeaders() : array(),
-            'javascripts' => method_exists($response, 'getJavascripts') ? $response->getJavascripts('ALL') : array(),
-            'stylesheets' => method_exists($response, 'getStylesheets') ? $response->getStylesheets('ALL') : array(),
-            'metas' => method_exists($response, 'getMetas') ? $response->getMetas() : array(),
-            'httpMetas' => method_exists($response, 'getHttpMetas') ? $response->getHttpMetas() : array(),
-        );
+    if ($user instanceof sfSecurityUser)
+    {
+      $data = array_merge($data, array(
+          'authenticated'   => $user->isAuthenticated(),
+          'credentials'     => $user->getCredentials(),
+          'lastRequest'     => $user->getLastRequestTime(),
+      ));
     }
 
-    /**
-     * Returns user parameters as an array.
-     *
-     * @param sfUser $user A sfUser instance
-     *
-     * @return array The user parameters
-     */
-    public static function userAsArray(sfUser $user = null)
+    return $data;
+  }
+
+  /**
+   * Returns a parameter holder as an array.
+   *
+   * @param sfParameterHolder $parameterHolder A sfParameterHolder instance
+   * @param boolean $removeObjects when set to true, objects are removed. default is false for BC.
+   *
+   * @return array The parameter holder as an array
+   */
+  public static function flattenParameterHolder($parameterHolder, $removeObjects = false)
+  {
+    $values = array();
+    if ($parameterHolder instanceof sfNamespacedParameterHolder)
     {
-        if (!$user) {
-            return array();
+      foreach ($parameterHolder->getNamespaces() as $ns)
+      {
+        $values[$ns] = array();
+        foreach ($parameterHolder->getAll($ns) as $key => $value)
+        {
+          $values[$ns][$key] = $value;
         }
-
-        $data = array(
-            'options' => $user->getOptions(),
-            'attributeHolder' => self::flattenParameterHolder($user->getAttributeHolder(), true),
-            'culture' => $user->getCulture(),
-        );
-
-        if ($user instanceof sfSecurityUser) {
-            $data = array_merge($data, array(
-                'authenticated' => $user->isAuthenticated(),
-                'credentials' => $user->getCredentials(),
-                'lastRequest' => $user->getLastRequestTime(),
-            ));
-        }
-
-        return $data;
+        ksort($values[$ns]);
+      }
+    }
+    else
+    {
+      foreach ($parameterHolder->getAll() as $key => $value)
+      {
+        $values[$key] = $value;
+      }
     }
 
-    /**
-     * Returns a parameter holder as an array.
-     *
-     * @param sfParameterHolder $parameterHolder A sfParameterHolder instance
-     * @param boolean $removeObjects when set to true, objects are removed. default is false for BC.
-     *
-     * @return array The parameter holder as an array
-     */
-    public static function flattenParameterHolder($parameterHolder, $removeObjects = false)
+    if ($removeObjects)
     {
-        $values = array();
-        if ($parameterHolder instanceof sfNamespacedParameterHolder) {
-            foreach ($parameterHolder->getNamespaces() as $ns){
-                $values[$ns] = array();
-                foreach ($parameterHolder->getAll($ns) as $key => $value){
-                    $values[$ns][$key] = $value;
-                }
-                ksort($values[$ns]);
-            }
-        } else {
-            foreach ($parameterHolder->getAll() as $key => $value){
-                $values[$key] = $value;
-            }
-        }
-
-        if ($removeObjects) {
-            $values = self::removeObjects($values);
-        }
-
-        ksort($values);
-
-        return $values;
+      $values = self::removeObjects($values);
     }
 
-    /**
-     * Removes objects from the array by replacing them with a String containing the class name.
-     *
-     * @param array $values an array
-     *
-     * @return array The array without objects
-     */
-    public static function removeObjects($values)
-    {
-        $nvalues = array();
-        foreach ($values as $key => $value){
-            if (is_array($value)) {
-                $nvalues[$key] = self::removeObjects($value);
-            } else if (is_object($value)) {
-                $nvalues[$key] = sprintf('%s Object()', get_class($value));
-            } else {
-                $nvalues[$key] = $value;
-            }
-        }
+    ksort($values);
 
-        return $nvalues;
+    return $values;
+  }
+
+  /**
+   * Removes objects from the array by replacing them with a String containing the class name.
+   *
+   * @param array $values an array
+   *
+   * @return array The array without objects
+   */
+  public static function removeObjects($values)
+  {
+    $nvalues = array();
+    foreach ($values as $key => $value)
+    {
+      if (is_array($value))
+      {
+        $nvalues[$key] = self::removeObjects($value);
+      }
+      else if (is_object($value))
+      {
+        $nvalues[$key] = sprintf('%s Object()', get_class($value));
+      }
+      else
+      {
+        $nvalues[$key] = $value;
+      }
     }
 
-    /**
-     * Shortens a file path by replacing symfony directory constants.
-     * 
-     * @param  string $file
-     * 
-     * @return string
-     */
-    static public function shortenFilePath($file)
-    {
-        foreach (array('sf_root_dir', 'sf_symfony_lib_dir') as $key){
-            if (0 === strpos($file, $value = sfConfig::get($key))) {
-                $file = str_replace($value, strtoupper($key), $file);
-                break;
-            }
-        }
+    return $nvalues;
+  }
 
-        return $file;
+  /**
+   * Shortens a file path by replacing symfony directory constants.
+   * 
+   * @param  string $file
+   * 
+   * @return string
+   */
+  static public function shortenFilePath($file)
+  {
+    foreach (array('sf_root_dir', 'sf_symfony_lib_dir') as $key)
+    {
+      if (0 === strpos($file, $value = sfConfig::get($key)))
+      {
+        $file = str_replace($value, strtoupper($key), $file);
+        break;
+      }
     }
 
-    public static function debug($what)
-    {
-        echo '<pre>';
-        if (is_object($what)) {
-            $aux = $what->toArray();
-            if (is_array($aux)) {
-                print_r($aux);
-            } else {
-                var_dump($aux);
-            }
-        } else {
-            if (is_array($what)) {
-                print_r($what);
-            } else {
-                var_dump($what);
-            }
-            echo '</pre>';
-        }
-    }
-
+    return $file;
+  }
 }
