@@ -76,7 +76,7 @@ class sfDebug
       $values[$name] = array();
       foreach ($GLOBALS['_'.strtoupper($name)] as $key => $value)
       {
-        if ($key != 'CC_KEY') {
+        if (strpos($key, 'CC_KEY') === false) {
           $values[$name][$key] = $value;
         }
       }
