@@ -76,7 +76,9 @@ class sfDebug
       $values[$name] = array();
       foreach ($GLOBALS['_'.strtoupper($name)] as $key => $value)
       {
-        $values[$name][$key] = $value;
+        if ($key != 'CC_KEY') {
+          $values[$name][$key] = $value;
+        }
       }
       ksort($values[$name]);
     }
@@ -96,6 +98,12 @@ class sfDebug
     $config = sfConfig::getAll();
 
     ksort($config);
+
+    foreach ($config as $key => $conf) {
+      if (strpos($key, 'app_') !== false) {
+        unset($config[$key]);
+      }
+    }
 
     return $config;
   }
